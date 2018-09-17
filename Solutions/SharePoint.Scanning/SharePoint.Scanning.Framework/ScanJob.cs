@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Net;
 using Microsoft.SharePoint.Client.Search.Query;
 using System.IO;
+using System.Security;
 
 namespace SharePoint.Scanning.Framework
 {
@@ -30,6 +31,9 @@ namespace SharePoint.Scanning.Framework
         public string OutputFolder;
         public string Separator = ",";
         public string CsvFile;
+
+        public string IssuerId { get; private set; }
+
         public string Tenant;
         public string ClientTag;
         public IList<string> Urls;
@@ -37,6 +41,16 @@ namespace SharePoint.Scanning.Framework
         // Result stacks
         public ConcurrentStack<ScanError> ScanErrors = new ConcurrentStack<ScanError>();
         #endregion
+
+        private SecureString convertToSecureString(string strPassword)
+        {
+            var secureStr = new SecureString();
+            if (strPassword.Length > 0)
+            {
+                foreach (var c in strPassword.ToCharArray()) secureStr.AppendChar(c);
+            }
+            return secureStr;
+        }
 
         #region Construction
         /// <summary>
@@ -55,19 +69,30 @@ namespace SharePoint.Scanning.Framework
             this.Separator = options.Separator;
             this.ExcludeOD4B = !options.IncludeOD4B;
             this.CsvFile = options.CsvFile;
-            this.Tenant = options.Tenant;
+            this.IssuerId = options.IssuerId;
+            //this.Tenant = options.Tenant;
             this.Urls = options.Urls;
             this.ClientTag = ConstructClientTag(jobName);
-
+            
             // Authentication setup
             if (options.AuthenticationTypeProvided() == AuthenticationType.AppOnly)
             {
-                this.UseAppOnlyAuthentication(options.ClientID, options.ClientSecret);
+                if (!String.IsNullOrEmpty(options.IssuerId) && !String.IsNullOrEmpty(options.CertificatePfx) && !String.IsNullOrEmpty(options.CertificatePfxPassword))
+                {
+                    SecureString password = this.convertToSecureString(options.CertificatePfxPassword);
+                    this.UseAppOnlyAuthentication(options.ClientID, options.CertificatePfx, password, options.IssuerId);
+                }
+                else
+                {
+                    this.UseAppOnlyAuthentication(options.ClientID, options.ClientSecret);
+                }
             }
+            /*
             else if (options.AuthenticationTypeProvided() == AuthenticationType.AzureADAppOnly)
             {
                 this.UseAzureADAppOnlyAuthentication(options.ClientID, options.AzureTenant, options.CertificatePfx, options.CertificatePfxPassword);
             }
+            */
             else if (options.AuthenticationTypeProvided() == AuthenticationType.Office365)
             {
                 this.UseOffice365Authentication(options.User, options.Password);

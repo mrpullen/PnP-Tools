@@ -18,7 +18,7 @@ namespace SharePoint.Scanning.Framework
         #endregion
 
         #region Security related options
-        [Option('i', "clientid", HelpText = "Client ID of the app-only principal used to scan your site collections", MutuallyExclusiveSet = "A")]
+        [Option('c', "clientid", HelpText = "Client ID of the app-only principal used to scan your site collections", MutuallyExclusiveSet = "A")]
         public string ClientID { get; set; }
 
         [Option('s', "clientsecret", HelpText = "Client Secret of the app-only principal used to scan your site collections", MutuallyExclusiveSet = "B")]
@@ -39,13 +39,21 @@ namespace SharePoint.Scanning.Framework
         [Option('x', "certificatepfxpassword", HelpText = "Password of the pfx file holding the certificate to authenticate")]
         public string CertificatePfxPassword { get; set; }
 
+        [Option('i', "issuerid", HelpText = "the issuer id for the pfx certificate (high trust on premise option).")]
+        public string IssuerId { get; set; }
+
+
+
+
         [Option('a', "tenantadminsite", HelpText = "Url to your tenant admin site (e.g. https://contoso-admin.contoso.com): only needed when your not using SPO MT")]
         public string TenantAdminSite { get; set; }
         #endregion
-
         #region Sites to scan
+        /**
+        
         [Option('t', "tenant", HelpText = "Tenant name, e.g. contoso when your sites are under https://contoso.sharepoint.com/sites. This is the recommended model for SharePoint Online MT as this way all site collections will be scanned")]
         public string Tenant { get; set; }
+        */
 
         [OptionList('r', "urls", HelpText = "List of (wildcard) urls (e.g. https://contoso.sharepoint.com/*,https://contoso-my.sharepoint.com,https://contoso-my.sharepoint.com/personal/*) that you want to get scanned", Separator = ',')]
         public virtual IList<string> Urls { get; set; }
@@ -74,18 +82,28 @@ namespace SharePoint.Scanning.Framework
         /// <returns>true if app-only, false otherwise</returns>
         public AuthenticationType AuthenticationTypeProvided()
         {
+
             if (!String.IsNullOrEmpty(ClientID) && !String.IsNullOrEmpty(ClientSecret))
             {
+                // Low Trust App Only Authentication
                 return AuthenticationType.AppOnly;
             }
+            else if (!String.IsNullOrEmpty(CertificatePfx) && !String.IsNullOrEmpty(CertificatePfxPassword) && !String.IsNullOrEmpty(IssuerId))
+            {
+                // High Trust App Only Authentication
+                return AuthenticationType.AppOnly;
+            }
+
             else if (!String.IsNullOrEmpty(User) && !String.IsNullOrEmpty(Password))
             {
                 return AuthenticationType.Office365;
             }
+            /**
             else if (!String.IsNullOrEmpty(CertificatePfx) && !String.IsNullOrEmpty(CertificatePfxPassword) && !String.IsNullOrEmpty(ClientID) && !String.IsNullOrEmpty(AzureTenant))
             {
-                return AuthenticationType.AzureADAppOnly;
+                return AuthenticationType.;
             }
+            */
             else
             {
                 throw new Exception("Clonflicting security parameters provided.");
